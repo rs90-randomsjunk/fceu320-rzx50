@@ -1,0 +1,34 @@
+#!/bin/sh
+
+mkdir -p opk
+cp ./bin/fceux opk/fceux
+cp ./fceux.png opk/icon.png
+cp ./bin/sp.bmp opk/sp.bmp
+cp ./bin/bg.bmp opk/bg.bmp
+cp ./COPYING opk/COPYING
+
+# https://unix.stackexchange.com/questions/219268/how-to-add-new-lines-when-using-echo
+print()
+	case    ${IFS- } in
+	(\ *)   printf  %b\\n "$*";;
+	(*)     IFS=\ $IFS
+	printf  %b\\n "$*"
+	IFS=${IFS#?}
+esac
+
+# Create GmenuNx entry file plus other things
+
+print '[Desktop Entry]
+Type=Application
+Name=Fceux
+Comment=NES emulator
+Exec=fceux %f
+Icon=icon
+Terminal=false
+Type=Application
+Categories=emulators;
+X-OD-NeedsDownscaling=false' > opk/default.rs90.desktop
+
+mksquashfs ./opk fceux_rs90.opk -all-root -noappend -no-exports -no-xattrs
+
+rm -r opk

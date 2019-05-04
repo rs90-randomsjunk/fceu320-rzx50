@@ -204,22 +204,22 @@ OBJS = $(CORE_OBJS) $(BOARDS_OBJS) $(INPUT_OBJS) $(MAPPERS_OBJS) $(UTILS_OBJS) \
 
 TOOLCHAIN=
 BINDIR=
-CC = mipsel-linux-gcc
-CXX = mipsel-linux-g++
-LD = mipsel-linux-g++
-AS = mipsel-linux-as
+CC = /opt/rs90-toolchain/bin/mipsel-linux-gcc
+CXX = /opt/rs90-toolchain/bin/mipsel-linux-g++
+LD = /opt/rs90-toolchain/bin/mipsel-linux-g++
 
 INCLUDEDIR=$(TOOLCHAIN)/include
-CFLAGS = -I$(INCLUDEDIR) -I$(SRC)
-CXXFLAGS = -I$(INCLUDEDIR)
 
-LDFLAGS = -s
+OPT_FLAGS = -Ofast -fdata-sections -ffunction-sections -mno-fp-exceptions -mno-check-zero-division -mframe-header-opt -fno-common -flto -fwhole-program -fsingle-precision-constant -mips32 -fno-PIC -mno-abicalls
+
+CFLAGS = -I$(INCLUDEDIR) -I$(SRC) $(OPT_FLAGS)
+CXXFLAGS = -I$(INCLUDEDIR)
 
 W_OPTS	= -Wno-write-strings -Wno-sign-compare
 
 F_OPTS = -fomit-frame-pointer -fno-builtin -fno-common
 
-CC_OPTS	= -O2 -mips32 $(F_OPTS) $(W_OPTS)
+CC_OPTS	= $(OPT_FLAGS) -mips32 $(F_OPTS) $(W_OPTS)
 
 CFLAGS += $(CC_OPTS)
 CFLAGS += -DDINGUX \
@@ -230,11 +230,8 @@ CFLAGS += -DDINGUX \
 	  -D_REENTRANT \
 	  -I$(INCLUDEDIR)/SDL -D_GNU_SOURCE=1 -D_REENTRANT
 CXXFLAGS += $(CFLAGS)
-LDFLAGS  += $(CC_OPTS)
-ifdef STATIC
-LDFLAGS  += -static-libgcc -static-libstdc++
-endif
-LIBS = -L$(LIBDIR) `sdl-config --libs` -lz -lm
+
+LDFLAGS  = -lc -lstdc++ -lgcc -lm -lSDL -lz -lm -no-pie -Wl,--as-needed -Wl,--gc-sections -flto -s
 
 TARGET = fceux
 
@@ -245,7 +242,7 @@ $(TARGET): $(OBJS)
 	@cp src/drivers/dingux-sdl/gui/*.bmp bin/
 	@echo Linking $@...
 	@echo $(LD) $(LDFLAGS) $(OBJS) -o bin/$@
-	$(LD) $(LDFLAGS) $(OBJS) $(LIBS) -o bin/$@
+	$(LD) $(OBJS) $(LDFLAGS) -o bin/$@
 
 %.o: %.c
 	@echo Compiling $<...
