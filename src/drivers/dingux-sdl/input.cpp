@@ -303,6 +303,9 @@ static void KeyboardCommands() {
 		SilenceSound(1);
 		MenuRequested = false;
 		FCEUGUI_Run();
+		while (ispressed(DINGOO_A) || ispressed(DINGOO_B)) { // wait for keyup
+			SDL_PumpEvents();
+		}
 		SilenceSound(0);
 		return;
 	}

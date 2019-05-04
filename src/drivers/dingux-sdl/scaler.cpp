@@ -7,6 +7,33 @@
 
 extern uint32 palettetranslate[65536 * 4];
 
+/* alekmaul's scaler taken from mame4all */
+void bitmap_scale(uint32_t startx, uint32_t starty, uint32_t viswidth, uint32_t visheight, uint32_t newwidth, uint32_t newheight,uint32_t pitchsrc,uint32_t pitchdest, uint16_t* __restrict__ src, uint16_t* __restrict__ dst)
+{
+    uint32_t W, H, ix, iy, x, y;
+    uint16_t* __restrict__ buffer_mem;
+    x= startx << 16;
+    y= starty << 16;
+    W= newwidth;
+    H= newheight;
+    ix= (viswidth << 16) / W;
+    iy= (visheight << 16) / H;
+
+    do 
+    {
+		buffer_mem = &src[(y >> 16) * pitchsrc];
+        W = newwidth;
+        x = startx << 16;
+        do 
+        {
+            *dst++ = buffer_mem[x >> 16];
+            x += ix;
+        } while (--W);
+        dst += pitchdest;
+        y += iy;
+    } while (--H);
+}
+
 /*
 	Upscale 256x224 -> 320x240
 
@@ -55,13 +82,6 @@ void upscale_320x240(uint32 *dst, uint8 *src)
 			cd = palettetranslate[*(uint16 *)(src + source + 2)] & 0xF7DEF7DE;
 			ef = palettetranslate[*(uint16 *)(src + source + 4)] & 0xF7DEF7DE;
 			gh = palettetranslate[*(uint16 *)(src + source + 6)] & 0xF7DEF7DE;
-
-			if(Eh >= midh) { // average + 256
-				ab = AVERAGE(ab, palettetranslate[*(uint16 *)(src + source + 256)]) & 0xF7DEF7DE; // to prevent overflow
-				cd = AVERAGE(cd, palettetranslate[*(uint16 *)(src + source + 256 + 2)]) & 0xF7DEF7DE; // to prevent overflow
-				ef = AVERAGE(ef, palettetranslate[*(uint16 *)(src + source + 256 + 4)]) & 0xF7DEF7DE; // to prevent overflow
-				gh = AVERAGE(gh, palettetranslate[*(uint16 *)(src + source + 256 + 6)]) & 0xF7DEF7DE; // to prevent overflow
-			}
 
 			*dst++ = ab;
 			*dst++  = ((ab >> 17) + ((cd & 0xFFFF) >> 1)) + (cd << 16);

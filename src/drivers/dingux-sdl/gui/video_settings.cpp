@@ -6,10 +6,11 @@ extern Config *g_config;
 
 // Fullscreen mode
 static char *scale_tag[] = {
-		"Original",
-		"Aspect",
-		"FS Fast",
-		"FS Smooth"
+		"No crop",
+		"Nintendo",
+		"PocketNES",
+		"240x160 crop",
+		"Zelda ingame"
 };
 
 static void fullscreen_update(unsigned long key)
@@ -17,7 +18,7 @@ static void fullscreen_update(unsigned long key)
 	int val;
 	g_config->getOption("SDL.Fullscreen", &val);
 
-	if (key == DINGOO_RIGHT) val = val < 3 ? val+1 : 3;
+	if (key == DINGOO_RIGHT) val = val < 4 ? val+1 : 4;
 	if (key == DINGOO_LEFT) val = val > 0 ? val-1 : 0;
    
 	g_config->setOption("SDL.Fullscreen", val);
@@ -171,14 +172,14 @@ int RunVideoSettings()
 			DrawChar(gui_screen, SP_LOGO, 12, 9);
 			
 			// Draw selector
-			DrawChar(gui_screen, SP_SELECTOR, 56, spy);
-			DrawChar(gui_screen, SP_SELECTOR, 77, spy);
+			DrawChar(gui_screen, SP_SELECTOR, 56-12, spy);
+			DrawChar(gui_screen, SP_SELECTOR, 77-12, spy);
 
-			DrawText(gui_screen, "Video Settings", 8, 37); 
+			DrawText(gui_screen, "Video Settings", 40, 37); 
 
 			// Draw menu
 			for(i=0,y=72;i < 8;i++,y+=15) {
-				DrawText(gui_screen, vd_menu[i].name, 60, y);
+				DrawText(gui_screen, vd_menu[i].name, 48, y);
 		
 				g_config->getOption(vd_menu[i].option, &itmp);
 				if (!strncmp(vd_menu[i].name, "Video scaling", 5)) {
@@ -191,7 +192,7 @@ int RunVideoSettings()
 				}
 				else sprintf(tmp, "%d", itmp);
 
-				DrawText(gui_screen, tmp, 210, y);
+				DrawText(gui_screen, tmp, 210-32, y);
 			}
 
 			// Draw info

@@ -815,6 +815,7 @@ int main(int argc, char *argv[]) {
 
 	// exit the infrastructure
 	FCEUI_Kill();
+	Destroy_Fceux_Video();
 	SDL_Quit();
 	return 0;
 }

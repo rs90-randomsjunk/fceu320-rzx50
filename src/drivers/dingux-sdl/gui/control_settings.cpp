@@ -185,7 +185,7 @@ int RunControlSettings()
 			if (err == 0) {
 				DrawText(gui_screen, "!!!Error - Duplicate Key Mapping!!! ", 8, 37);
 			} else {
-				DrawText(gui_screen, "Control Settings - Press select to edit", 8, 37);
+				DrawText(gui_screen, "Press select to edit", 40, 37);
 			}
 
 			// Draw menu

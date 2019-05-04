@@ -1158,12 +1158,15 @@ static void RefreshLine(int lastpixel) {
 	PALRAM[0xC] &= 63;
 
 	RefreshAddr = smorkus;
-	if (firsttile <= 2 && 2 < lasttile && !(PPU[1] & 2)) {
+	
+	/* Gameblabla (clip sides) */
+	
+	/*if (firsttile <= 2 && 2 < lasttile && !(PPU[1] & 2)) {
 		uint32 tem;
 		tem = READPAL(0) | (READPAL(0) << 8) | (READPAL(0) << 16) | (READPAL(0) << 24);
 		tem |= 0x40404040;
 		*(uint32*)Plinef = *(uint32*)(Plinef + 4) = tem;
-	}
+	}*/
 
 	if (!ScreenON) {
 		uint32 tem;

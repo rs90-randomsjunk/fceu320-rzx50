@@ -96,7 +96,7 @@ int RunSettingsMenu() {
 			DrawChar(gui_screen, SP_SELECTOR, 56, spy);
 			DrawChar(gui_screen, SP_SELECTOR, 77, spy);
 
-			DrawText(gui_screen, "Settings", 8, 37);
+			DrawText(gui_screen, "Settings", 40, 37);
 
 			// Draw menu
 			for (i = 0, y = 72; i < SETTINGS_MENUSIZE; i++, y += 16) {

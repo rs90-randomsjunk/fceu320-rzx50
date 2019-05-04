@@ -261,7 +261,7 @@ static int cmd_exit() {
 /* MAIN MENU */
 
 static MenuEntry main_menu[] = { 
-		{ "Load ROM", "Load new rom or movie", load_rom },
+		/*{ "Load ROM", "Load new rom or movie", load_rom },*/
 		{ "Reset", "Reset NES", reset_nes },
 		{ "Flip disc", "Switch side or disc (FDS)", flip_disc },
 		{ "Save state", "Save current state", save_state },
@@ -338,13 +338,13 @@ void FCEUGUI_Run() {
 				index--;
 				spy -= 16;
 			} else {
-				index = 7;
+				index = 6;
 				spy = 72 + 16*index;
 			}
 		}
 
 		if (parsekey(DINGOO_DOWN, 0)) {
-			if (index < 7) {
+			if (index < 6) {
 				index++;
 				spy += 16;
 			} else {
@@ -390,8 +390,8 @@ void FCEUGUI_Run() {
 			DrawChar(gui_screen, SP_LOGO, 12, 9);
 			
 			// Draw selector
-			DrawChar(gui_screen, SP_SELECTOR, 56, spy);
-			DrawChar(gui_screen, SP_SELECTOR, 77, spy);
+			DrawChar(gui_screen, SP_SELECTOR, 56, spy - 12);
+			DrawChar(gui_screen, SP_SELECTOR, 77, spy - 12);
 
 			if (index == 3 || index == 4) {
 				// Draw state preview
@@ -406,11 +406,10 @@ void FCEUGUI_Run() {
 				draw_shot_preview((unsigned short *)gui_screen->pixels, 185, 100);
 			}
 
-			DrawText(gui_screen, "Now Playing:", 8, 37);
-			DrawText(gui_screen, g_romname, 96, 37);
+			DrawText(gui_screen, g_romname, 40, 37);
 
 			// Draw menu
-			for (i = 0, y = 72; i < 8; i++, y += 16) {
+			for (i = 0, y = 72 - 12; i < 8; i++, y += 16) {
 				DrawText(gui_screen, main_menu[i].name, 60, y);
 			}
 

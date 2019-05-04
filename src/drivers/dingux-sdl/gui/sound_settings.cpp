@@ -228,7 +228,7 @@ int RunSoundSettings() {
 			DrawChar(gui_screen, SP_SELECTOR, 56, spy);
 			DrawChar(gui_screen, SP_SELECTOR, 77, spy);
 
-			DrawText(gui_screen, "Sound Settings", 8, 37);
+			DrawText(gui_screen, "Sound Settings", 40, 37);
 
 			// Draw menu
 			for (i = offset_start, y = 72; i < offset_end; i++, y += 15) {

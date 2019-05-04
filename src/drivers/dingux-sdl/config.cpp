@@ -124,7 +124,7 @@ Config * InitConfig() {
 	config->addOption("square2vol", "SDL.Sound.Square2Volume", 256);
 	config->addOption("noisevol", "SDL.Sound.NoiseVolume", 256);
 	config->addOption("pcmvol", "SDL.Sound.PCMVolume", 256);
-	config->addOption("soundrate", "SDL.Sound.Rate", 32000);
+	config->addOption("soundrate", "SDL.Sound.Rate", 44100);
 	config->addOption("soundq", "SDL.Sound.Quality", 0);
 	config->addOption("soundrecord", "SDL.Sound.RecordFile", "");
 	config->addOption("soundbufsize", "SDL.Sound.BufSize", 30);
@@ -147,9 +147,9 @@ Config * InitConfig() {
 	config->addOption("slend", "SDL.ScanLineEnd", 239);
 
 	// video controls
-	config->addOption('x', "xres", "SDL.XResolution", 320);
-	config->addOption('y', "yres", "SDL.YResolution", 240);
-	config->addOption('f', "fullscreen", "SDL.Fullscreen", 0);
+	config->addOption('x', "xres", "SDL.XResolution", 240);
+	config->addOption('y', "yres", "SDL.YResolution", 160);
+	config->addOption('f', "fullscreen", "SDL.Fullscreen", 2);
 	config->addOption('b', "bpp", "SDL.BitsPerPixel", 8);
 	config->addOption("doublebuf", "SDL.DoubleBuffering", 0);
 	config->addOption("autoscale", "SDL.AutoScale", 1);

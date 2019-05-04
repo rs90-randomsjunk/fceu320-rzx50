@@ -40,7 +40,7 @@
 #include "../common/configSys.h"
 
 // GLOBALS
-SDL_Surface *screen;
+SDL_Surface *screen, *toscale_surface;
 SDL_Surface *nes_screen; // 256x224
 
 extern Config *g_config;
@@ -53,14 +53,14 @@ static int s_inited;
 static bool s_VideoModeSet = false;
 
 static int s_clipSides;
-int s_fullscreen;
+int s_fullscreen = 3;
 static int noframe;
 
 static int FDSTimer = 0;
 int FDSSwitchRequested = 0;
 
-#define NWIDTH	(256 - (s_clipSides ? 16 : 0))
-#define NOFFSET	(s_clipSides ? 8 : 0)
+#define NWIDTH	(256)
+#define NOFFSET	(0)
 
 /* Blur effect taken from vidblit.cpp */
 uint32 palettetranslate[65536 * 4];
@@ -101,9 +101,17 @@ int KillVideo() {
 	if (s_inited == 0)
 		return -1;
 
-	SDL_FreeSurface(nes_screen);
+	if (nes_screen) SDL_FreeSurface(nes_screen);
+	
 	s_inited = 0;
 	return 0;
+}
+
+void Destroy_Fceux_Video()
+{
+	if (nes_screen) SDL_FreeSurface(nes_screen);
+	if (toscale_surface) SDL_FreeSurface(toscale_surface);
+	if (screen) SDL_FreeSurface(screen);
 }
 
 /**
@@ -155,35 +163,15 @@ int InitVideo(FCEUGI *gi) {
 			fprintf(stderr,"%s",SDL_GetError());
 		}
 
-	// initialize dingoo video mode
-	if (!s_VideoModeSet) {
-		uint32 vm = 0; // 0 - 320x240, 1 - 400x240, 2 - 480x272
-
-		#define NUMOFVIDEOMODES 3
-		struct {
-			uint32 x;
-			uint32 y;
-		} VModes[NUMOFVIDEOMODES] = {
-			{320, 240},
-			{400, 240},
-			{480, 272}
-		};
-
-		for(vm = NUMOFVIDEOMODES-1; vm >= 0; vm--)
-		{
-			if(SDL_VideoModeOK(VModes[vm].x, VModes[vm].y, 16, SDL_HWSURFACE | DINGOO_MULTIBUF) != 0)
-			{
-				screen = SDL_SetVideoMode(VModes[vm].x, VModes[vm].y, 16, SDL_HWSURFACE | DINGOO_MULTIBUF);
-				s_VideoModeSet = true;
-				break;
-			}
-		}
-	}
-
+	screen = SDL_SetVideoMode(240, 160, 16, SDL_HWSURFACE);
+	toscale_surface = SDL_CreateRGBSurface(SDL_SWSURFACE, 256, 240, 16, 0,0,0,0);
+	
+	s_VideoModeSet = true;
+	
 	// a hack to bind inner buffer to nes_screen surface
 	extern uint8 *XBuf;
 
-	nes_screen = SDL_CreateRGBSurfaceFrom(XBuf, 256, 224, 8, 256, 0, 0, 0, 0);
+	nes_screen = SDL_CreateRGBSurfaceFrom(XBuf, 256, 240, 8, 256, 0, 0, 0, 0);
 	if(!nes_screen)
 		printf("Error in SDL_CreateRGBSurfaceFrom\n");
 	SDL_SetPalette(nes_screen, SDL_LOGPAL, (SDL_Color *)s_cpsdl, 0, 256);
@@ -291,6 +279,10 @@ void UnlockConsole() {
 
 #define READU16(x)  (uint16) ((uint16)(x)[0] | (uint16)(x)[1] << 8) 
 
+uint32_t toclip_ppu = 0;
+uint32_t toclip_ppu_y = 0;
+extern uint8_t PPU[4];
+
 /**
  * Pushes the given buffer of bits to the screen.
  */
@@ -324,74 +316,24 @@ void BlitScreen(uint8 *XBuf) {
 		}
 		FDSTimer++;
 	}
+	
+	register uint8 *pBuf = XBuf;
+	int32 pinc = 0;
+	register uint32 *dest = (uint32 *) toscale_surface->pixels;
+	
+	/* Clip Left Column if PPU background setting is enabled */
+	toclip_ppu = 0;
+	toclip_ppu_y = 0;
+	
+	if (!(PPU[1] & 2)) toclip_ppu = 1;
 
 	// TODO - Move these to its own file?
-	if (SDL_MUSTLOCK(screen)) SDL_LockSurface(screen);
-
-	register uint8 *pBuf = XBuf;
-
-	if(s_fullscreen == 3) { // fullscreen smooth
-		if (s_clipSides) {
-			upscale_320x240_bilinearish_clip((uint32 *)screen->pixels, (uint8 *)XBuf + 256 * 8, 256);
-		} else {
-			upscale_320x240_bilinearish_noclip((uint32 *)screen->pixels, (uint8 *)XBuf + 256 * 8, 256);
-		}
-	} else if(s_fullscreen == 2) { // fullscreen
-		switch(screen->w) {
-			case 480: upscale_480x272((uint32 *)screen->pixels, (uint8 *)XBuf + 256 * 8); break;
-			case 400: upscale_384x240((uint32 *)screen->pixels, (uint8 *)XBuf + 256 * 8); break;
-			case 320: upscale_320x240((uint32 *)screen->pixels, (uint8 *)XBuf + 256 * 8); break;
-		}
-	} else if(s_fullscreen == 1) { // aspect fullscreen
-		switch(screen->w) {
-			case 480: upscale_384x272((uint32 *)screen->pixels, (uint8 *)XBuf + 256 * 8); break;
-			case 400:
-			case 320:
-				pBuf += (s_srendline * 256) + 8;
-				register uint16 *dest = (uint16 *) screen->pixels;
-				//dest += (320 * s_srendline) + 20;
-				dest += (screen->w * s_srendline) + (screen->w - 280) / 2 + ((screen->h - 240) / 2) * screen->w;
-
-				// semi fullscreen no blur
-				for (y = s_tlines; y; y--) {
-					for (x = 240; x; x -= 6) {
-						__builtin_prefetch(dest + 2, 1);
-						*dest++ = s_psdl[*pBuf];
-						*dest++ = s_psdl[*(pBuf + 1)];
-						*dest++ = s_psdl[*(pBuf + 2)];
-						*dest++ = s_psdl[*(pBuf + 3)];
-						*dest++ = s_psdl[*(pBuf + 3)];
-						*dest++ = s_psdl[*(pBuf + 4)];
-						*dest++ = s_psdl[*(pBuf + 5)];
-						pBuf += 6;
-					}
-					pBuf += 16;
-					//dest += 40;
-					dest += screen->w - 280;
-				}
-		}
-	} else { // native res
-		//int pinc = (320 - NWIDTH) >> 1;
-		int32 pinc = (screen->w - NWIDTH) >> 1;
-
-		//SDL_Rect dstrect;
-
-		// center windows
-		//dstrect.x = (screen->w - 256) / 2;
-		//dstrect.y = (screen->h - 224) / 2;
-
-		// doesn't work in rzx-50 dingux
-		//SDL_BlitSurface(nes_screen, 0, screen, &dstrect);
-
-		register uint32 *dest = (uint32 *) screen->pixels;
-
-		// XXX soules - not entirely sure why this is being done yet
-		pBuf += (s_srendline * 256) + NOFFSET;
-		//dest += (s_srendline * 320) + pinc >> 1;
-		dest += (screen->w/2 * s_srendline) + pinc / 2 + ((screen->h - 240) / 4) * screen->w;
-
-		for (y = s_tlines; y; y--, pBuf += 256 - NWIDTH) {
-			for (x = NWIDTH >> 3; x; x--) {
+	if (SDL_LockSurface(screen) == 0)
+	{
+		for (y = s_tlines; y; y--) 
+		{
+			for (x = 256 >> 3; x; x--) 
+			{
 				__builtin_prefetch(dest + 4, 1);
 				*dest++ = palettetranslate[*(uint16 *) pBuf];
 				*dest++ = palettetranslate[*(uint16 *) (pBuf + 2)];
@@ -401,9 +343,32 @@ void BlitScreen(uint8 *XBuf) {
 			}
 			dest += pinc;
 		}
+		switch(s_fullscreen)
+		{
+			// No crop (except Left Column)
+			case 0:
+				bitmap_scale(toclip_ppu ? 8 : 0, 0, toclip_ppu ? 248 : 256, 224, screen->w, screen->h, 256, 0, (uint16_t* __restrict__)toscale_surface->pixels, (uint16_t* __restrict__)screen->pixels);
+			break;
+			// Nintendo Safe overscan
+			case 1:
+				bitmap_scale(16, 16, 224, 192, screen->w, screen->h, 256, 0, (uint16_t* __restrict__)toscale_surface->pixels, (uint16_t* __restrict__)screen->pixels);
+			break;
+			// PocketNES
+			case 2:
+				bitmap_scale(8, 16, 240, 197, screen->w, screen->h, 256, 0, (uint16_t* __restrict__)toscale_surface->pixels, (uint16_t* __restrict__)screen->pixels);
+			break;
+			// 240x16 crop
+			case 3:
+				bitmap_scale(8, 48, 240, 160, screen->w, screen->h, 256, 0, (uint16_t* __restrict__)toscale_surface->pixels, (uint16_t* __restrict__)screen->pixels);
+			break;
+			// Zelda ingame
+			case 4:
+				bitmap_scale(8, 64, 240, 160, screen->w, screen->h, 256, 0, (uint16_t* __restrict__)toscale_surface->pixels, (uint16_t* __restrict__)screen->pixels);
+			break;
+		}
+		SDL_UnlockSurface(screen);
 	}
-
-	if (SDL_MUSTLOCK(screen)) SDL_UnlockSurface(screen);
+		
 	SDL_Flip(screen);
 }
 
