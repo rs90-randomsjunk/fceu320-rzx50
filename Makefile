@@ -215,12 +215,11 @@ CFLAGS = -I$(SRC)
 CXXFLAGS =
 
 LIBDIR=
-LDFLAGS = -s
 
 W_OPTS	= -Wall -Wno-write-strings -Wno-narrowing -Wno-unused-local-typedefs
 
 F_OPTS =
-CC_OPTS	= -O2 $(F_OPTS) $(W_OPTS)
+CC_OPTS	= -O2 -g $(F_OPTS) $(W_OPTS)
 
 CFLAGS += $(CC_OPTS)
 CFLAGS += -DDINGUX \
@@ -231,11 +230,7 @@ CFLAGS += -DDINGUX \
 	  -D_REENTRANT \
 	  -D_GNU_SOURCE=1 -D_REENTRANT
 CXXFLAGS += $(CFLAGS)
-LDFLAGS  += $(CC_OPTS)
-ifdef STATIC
-LDFLAGS  += -static-libgcc -static-libstdc++
-endif
-LIBS = -L$(LIBDIR) `sdl-config --libs` -lz -lm
+LDFLAGS  = $(CC_OPTS) -lSDL -lasound -lz -lm
 
 TARGET = fceux
 

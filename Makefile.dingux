@@ -231,7 +231,7 @@ CFLAGS += -DDINGUX \
 	  -I$(INCLUDEDIR)/SDL -D_GNU_SOURCE=1 -D_REENTRANT
 CXXFLAGS += $(CFLAGS)
 
-LDFLAGS  = -lc -lstdc++ -lgcc -lm -lSDL -lz -lm -no-pie -Wl,--as-needed -Wl,--gc-sections -flto -s
+LDFLAGS  = -lc -lstdc++ -lgcc -lm -lSDL -lasound -lz -lm -no-pie -Wl,--as-needed -Wl,--gc-sections -flto -s
 
 TARGET = fceux
 

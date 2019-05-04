@@ -109,7 +109,6 @@ int KillVideo() {
 
 void Destroy_Fceux_Video()
 {
-	if (nes_screen) SDL_FreeSurface(nes_screen);
 	if (toscale_surface) SDL_FreeSurface(toscale_surface);
 	if (screen) SDL_FreeSurface(screen);
 }

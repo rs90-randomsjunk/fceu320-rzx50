@@ -18,17 +18,12 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-/* This now uses ALSA instead of libSDL */
-
 /// \file
 /// \brief Handles sound emulation using the SDL.
 
 #include <stdio.h>
 #include <string.h> 
 #include <stdlib.h>
-#include <alsa/asoundlib.h>
-
-static snd_pcm_t *handle;
 
 #include "dingoo.h"
 
@@ -42,10 +37,38 @@ static unsigned int s_BufferRead;
 static unsigned int s_BufferWrite;
 static volatile unsigned int s_BufferIn;
 
-static unsigned int SampleSize = 2048;
-
 static int s_mute = 0;
 
+SDL_AudioSpec spec;
+
+/**
+ * Callback to get and play audio data.
+ */
+static void fillaudio(void *udata, uint8 *stream, int len) // len == spec.samples * 4
+{
+    int32 *tmps = (int32 *)stream;
+    len >>= 2;
+
+    // debug code
+    //printf("s_BufferIn: %i s_BufferWrite = %i s_BufferRead = %i s_BufferSize = %i\n",
+    //    s_BufferIn, s_BufferWrite, s_BufferRead, s_BufferSize);
+
+    while (len) {
+        int32 sample = 0;
+        if (s_BufferIn) {
+            sample = s_Buffer[s_BufferRead] & 0xFFFF;
+            s_BufferRead = (s_BufferRead + 1) % s_BufferSize;
+            s_BufferIn--;
+            sample |= (sample << 16);
+        } else {
+            sample = 0;
+        }
+
+        *tmps = sample;
+        tmps++;
+        len--; 
+    }
+}
 
 /**
  * Initialize the audio subsystem.
@@ -56,39 +79,22 @@ int InitSound()
             soundsquare1volume, soundsquare2volume, soundnoisevolume,
             soundpcmvolume, soundq, lowpass, samples;
 
-	snd_pcm_hw_params_t *params;
-	uint32_t val;
-	int32_t dir = -1;
-	snd_pcm_uframes_t frames;
-	
-	/* Open PCM device for playback. */
-	int32_t rc = snd_pcm_open(&handle, "default", SND_PCM_STREAM_PLAYBACK, 0);
-
-	if (rc < 0)
-		rc = snd_pcm_open(&handle, "plughw:0,0,0", SND_PCM_STREAM_PLAYBACK, 0);
-
-	if (rc < 0)
-		rc = snd_pcm_open(&handle, "plughw:0,0", SND_PCM_STREAM_PLAYBACK, 0);
-		
-	if (rc < 0)
-		rc = snd_pcm_open(&handle, "plughw:1,0,0", SND_PCM_STREAM_PLAYBACK, 0);
-
-	if (rc < 0)
-		rc = snd_pcm_open(&handle, "plughw:1,0", SND_PCM_STREAM_PLAYBACK, 0);
-
-	if (rc < 0)
-	{
-		fprintf(stderr, "unable to open PCM device: %s\n", snd_strerror(rc));
-		return 1;
-	}
-	
-	snd_pcm_nonblock(handle, 0);
-
 
     FCEUI_printf("Initializing audio...\n");
 
     g_config->getOption("SDL.Sound", &sound);
     if (!sound) return 0;
+
+    memset(&spec, 0, sizeof(spec));
+    if(SDL_InitSubSystem(SDL_INIT_AUDIO) < 0) {
+        puts(SDL_GetError());
+        KillSound();
+        return(0);
+    }
+    char driverName[8];
+    SDL_AudioDriverName(driverName, 8);
+    
+    fprintf(stderr, "Loading SDL sound with %s driver...\n", driverName);
 
     // load configuration variables
     g_config->getOption("SDL.Sound.Rate", &soundrate);
@@ -101,87 +107,32 @@ int InitSound()
     g_config->getOption("SDL.Sound.NoiseVolume", &soundnoisevolume);
     g_config->getOption("SDL.Sound.PCMVolume", &soundpcmvolume);
     g_config->getOption("SDL.Sound.LowPass", &lowpass);
-    
-    if (soundrate < 11025) SampleSize = 512;
-    if (soundrate >= 11025 && soundrate <= 44100) SampleSize = 1024;
-    else SampleSize = 2048;
 
-    s_BufferSize = SampleSize * 4;
+    spec.freq = soundrate;
+    spec.format = AUDIO_S16;
+    spec.channels = 2;
+    spec.samples = 512;
+    spec.callback = fillaudio;
+    spec.userdata = 0;
+
+    while(spec.samples < (soundrate / 60) * 1) spec.samples <<= 1;
+
+    s_BufferSize = spec.samples * 4;
 
     s_Buffer = (int16 *) malloc(sizeof(int16) * s_BufferSize);
     if (!s_Buffer) return 0;
 
     s_BufferRead = s_BufferWrite = s_BufferIn = 0;
 
+    printf("SDL Size: %d, Internal size: %d\n", spec.samples, s_BufferSize);
 
-	/* Allocate a hardware parameters object. */
-	snd_pcm_hw_params_alloca(&params);
+    if(SDL_OpenAudio(&spec, 0) < 0) {
+        puts(SDL_GetError());
+        KillSound();
+        return(0);
+    }
 
-	/* Fill it in with default values. */
-	rc = snd_pcm_hw_params_any(handle, params);
-	if (rc < 0)
-	{
-		fprintf(stderr, "Error:snd_pcm_hw_params_any %s\n", snd_strerror(rc));
-		return 1;
-	}
-
-	/* Set the desired hardware parameters. */
-
-	/* Interleaved mode */
-	rc = snd_pcm_hw_params_set_access(handle, params, SND_PCM_ACCESS_RW_INTERLEAVED);
-	if (rc < 0)
-	{
-		fprintf(stderr, "Error:snd_pcm_hw_params_set_access %s\n", snd_strerror(rc));
-		return 1;
-	}
-
-	/* Signed 16-bit little-endian format */
-	rc = snd_pcm_hw_params_set_format(handle, params, SND_PCM_FORMAT_S16_LE);
-	if (rc < 0)
-	{
-		fprintf(stderr, "Error:snd_pcm_hw_params_set_format %s\n", snd_strerror(rc));
-		return 1;
-	}
-
-	/* Two channels (stereo) */
-	rc = snd_pcm_hw_params_set_channels(handle, params, 2);
-	if (rc < 0)
-	{
-		fprintf(stderr, "Error:snd_pcm_hw_params_set_channels %s\n", snd_strerror(rc));
-		return 1;
-	}
-	
-	val = soundrate;
-	rc=snd_pcm_hw_params_set_rate_near(handle, params, &val, &dir);
-	if (rc < 0)
-	{
-		fprintf(stderr, "Error:snd_pcm_hw_params_set_rate_near %s\n", snd_strerror(rc));
-		return 1;
-	}
-
-	/* Set period size to settings.aica.BufferSize frames. */
-	frames = SampleSize;
-	rc = snd_pcm_hw_params_set_period_size_near(handle, params, &frames, &dir);
-	if (rc < 0)
-	{
-		fprintf(stderr, "Error:snd_pcm_hw_params_set_buffer_size_near %s\n", snd_strerror(rc));
-		return 1;
-	}
-	frames *= 4;
-	rc = snd_pcm_hw_params_set_buffer_size_near(handle, params, &frames);
-	if (rc < 0)
-	{
-		fprintf(stderr, "Error:snd_pcm_hw_params_set_buffer_size_near %s\n", snd_strerror(rc));
-		return 1;
-	}
-
-	/* Write the parameters to the driver */
-	rc = snd_pcm_hw_params(handle, params);
-	if (rc < 0)
-	{
-		fprintf(stderr, "Unable to set hw parameters: %s\n", snd_strerror(rc));
-		return 1;
-	}
+    SDL_PauseAudio(0);
 
     FCEUI_SetSoundVolume(soundvolume);
     FCEUI_SetSoundQuality(soundq);
@@ -207,7 +158,7 @@ uint32 GetMaxSound(void) {
  * Returns the size of the audio buffer used by one SDL callback.
  */
 uint32 GetBufferSize(void) {
-    return SampleSize;
+    return spec.samples;
 }
 
 /**
@@ -222,21 +173,30 @@ uint32 GetBufferedSound(void) {
  */
 void WriteSound(int32 *buf, int Count) 
 {
-	long ret, len;
-	len = Count;
-	ret = snd_pcm_writei(handle, buf, len);
-	while(ret != len) 
-	{
-		if (ret < 0) 
-		{
-			snd_pcm_prepare( handle );
-		}
-		else 
-		{
-			len -= ret;
-		}
-		ret = snd_pcm_writei(handle, buf, len);
-	}
+    //extern int EmulationPaused;
+
+    SDL_LockAudio();
+
+    /*if (EmulationPaused == 0)*/ { // for some reason EmulationPaused is always 1, ignore it
+        while(Count) {
+            if(s_BufferIn == s_BufferSize) goto _exit;
+
+            s_Buffer[s_BufferWrite] = *buf;
+            Count--;
+            s_BufferWrite = (s_BufferWrite + 1) % s_BufferSize;
+            
+            s_BufferIn++;
+            
+            buf++;
+        }
+    }
+_exit:
+    SDL_UnlockAudio();
+
+    // If we have too much audio, wait a bit before accepting more.
+    // This keeps the lag in check.
+    while (GetBufferedSound() > 3 * GetBufferSize())
+        usleep(1000);
 }
 
 /**
@@ -246,7 +206,7 @@ void SilenceSound(int n)
 {
     // Not needed, the callback will write silence to buffer anyway
     // otherwise it causes noticable lag
-    //SDL_PauseAudio(n);  
+    SDL_PauseAudio(n);  
 }
 
 /**
@@ -254,15 +214,8 @@ void SilenceSound(int n)
  */
 int KillSound(void) {
     FCEUI_Sound(0);
-    //SDL_CloseAudio();
-    //SDL_QuitSubSystem(SDL_INIT_AUDIO);
-    
-	if (handle)
-	{
-		snd_pcm_drain(handle);
-		snd_pcm_close(handle);
-	}
-    
+    SDL_CloseAudio();
+    SDL_QuitSubSystem(SDL_INIT_AUDIO);
     if (s_Buffer) {
         free((void *) s_Buffer);
         s_Buffer = 0;
