@@ -715,6 +715,9 @@ Config::save()
     std::map<std::string, int>::iterator int_i;
     std::map<std::string, double>::iterator dbl_i;
     std::map<std::string, std::string>::iterator str_i;
+    
+    printf("_dir %s\n", _dir.c_str());
+    
     std::string configFile = _dir + "/" + cfgFile;
     char buf[1024];
 

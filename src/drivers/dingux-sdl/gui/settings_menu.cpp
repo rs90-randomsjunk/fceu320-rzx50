@@ -33,6 +33,7 @@ static int cmd_control_settings() {
 static int cmd_config_save() {
 	extern Config *g_config;
 	g_config->save();
+	return 0;
 }
 
 static MenuEntry
@@ -46,14 +47,14 @@ static MenuEntry
 int RunSettingsMenu() {
 	static int index = 0;
 	static int spy = 72;
-	int done = 0, y, i;
+	int done_ = 0, y, i;
 
 	g_dirty = 1;
-	while (!done) {
+	while (!done_) {
 		// Parse input
 		readkey();
 		if (parsekey(DINGOO_B))
-			done = 1;
+			done_ = 1;
 
 		if (parsekey(DINGOO_UP, 1)) {
 			if (index > 0) {
@@ -76,7 +77,7 @@ int RunSettingsMenu() {
 		}
 
 		if (parsekey(DINGOO_A)) {
-			done = settings_menu[index].command();
+			done_ = settings_menu[index].command();
 		}
 
 		// Must draw bg only when needed
@@ -123,4 +124,6 @@ int RunSettingsMenu() {
 	dingoo_clear_video();
 
 	g_dirty = 1;
+	
+	return 0;
 }

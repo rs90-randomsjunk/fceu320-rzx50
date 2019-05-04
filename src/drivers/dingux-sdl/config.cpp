@@ -26,6 +26,8 @@
 #include <windows.h>
 #endif
 
+static char home_path[256];
+
 /**
  * Read a custom pallete from a file and load it into the core.
  */
@@ -51,25 +53,15 @@ int LoadCPalette(const std::string &file) {
  * Creates the subdirectories used for saving snapshots, movies, game
  * saves, etc.  Hopefully obsolete with new configuration system.
  */
-static void CreateDirs(const std::string &dir) {
-	char *subs[7] = { "fcs", "snaps", "gameinfo", "sav", "cheats", "movie",
-			"cfg" };
-	std::string subdir;
-	int x;
-
-#if defined(WIN32) || defined(NEED_MINGW_HACKS)
-	mkdir(dir.c_str());
-	for(x = 0; x < 7; x++) {
-		subdir = dir + PSS + subs[x];
-		mkdir(subdir.c_str());
+static void CreateDirs() {
+	char *subs[7] = { "fcs", "snaps", "gameinfo", "sav", "cheats", "movie", "cfg" };
+	uint32_t x;
+	char tmp[512];
+	for(x = 0; x < 7; x++) 
+	{
+		snprintf(tmp, sizeof(tmp), "%s/%s", home_path, subs[x]);
+		mkdir(tmp, S_IRWXU);
 	}
-#else
-	mkdir(dir.c_str(), S_IRWXU);
-	for (x = 0; x < 7; x++) {
-		subdir = dir + PSS + subs[x];
-		mkdir(subdir.c_str(), S_IRWXU);
-	}
-#endif
 }
 
 /**
@@ -77,42 +69,21 @@ static void CreateDirs(const std::string &dir) {
  * hopefully become obsolete once the new configuration system is in
  * place.
  */
-static void GetBaseDirectory(std::string &dir)
+static void GetBaseDirectory()
 {
-#ifdef WIN32
-	dir = ".fceux";
-	mkdir(dir.c_str());
-#else
-	char *home = getenv("HOME");
-	if (home) {
-		dir = std::string(home) + "/.fceux";
-	} else {
-#ifdef WIN32
-		home = new char[MAX_PATH + 1];
-		GetModuleFileName(NULL, home, MAX_PATH + 1);
-
-		char *lastBS = strrchr(home,'\\');
-		if(lastBS) {
-			*lastBS = 0;
-		}
-
-		dir = std::string(home);
-		delete[] home;
-#else
-		dir = "";
-#endif
-	}
-#endif
+	snprintf(home_path, sizeof(home_path), "%s/.fceux", getenv("HOME"));
 }
 
 Config * InitConfig() {
-	std::string dir, prefix;
+	std::string prefix, dir;
 	Config *config;
 
-	GetBaseDirectory(dir);
+	GetBaseDirectory();
 
-	FCEUI_SetBaseDirectory(dir.c_str());
-	CreateDirs(dir);
+	FCEUI_SetBaseDirectory(home_path);
+	CreateDirs();
+	
+	dir.assign(home_path, sizeof(home_path));
 
 	config = new Config(dir);
 
@@ -124,7 +95,7 @@ Config * InitConfig() {
 	config->addOption("square2vol", "SDL.Sound.Square2Volume", 256);
 	config->addOption("noisevol", "SDL.Sound.NoiseVolume", 256);
 	config->addOption("pcmvol", "SDL.Sound.PCMVolume", 256);
-	config->addOption("soundrate", "SDL.Sound.Rate", 44100);
+	config->addOption("soundrate", "SDL.Sound.Rate", 48000);
 	config->addOption("soundq", "SDL.Sound.Quality", 0);
 	config->addOption("soundrecord", "SDL.Sound.RecordFile", "");
 	config->addOption("soundbufsize", "SDL.Sound.BufSize", 30);
@@ -150,7 +121,7 @@ Config * InitConfig() {
 	config->addOption('x', "xres", "SDL.XResolution", 240);
 	config->addOption('y', "yres", "SDL.YResolution", 160);
 	config->addOption('f', "fullscreen", "SDL.Fullscreen", 2);
-	config->addOption('b', "bpp", "SDL.BitsPerPixel", 8);
+	config->addOption('b', "bpp", "SDL.BitsPerPixel", 16);
 	config->addOption("doublebuf", "SDL.DoubleBuffering", 0);
 	config->addOption("autoscale", "SDL.AutoScale", 1);
 	config->addOption("keepratio", "SDL.KeepRatio", 1);
