@@ -229,9 +229,19 @@ CFLAGS += -DDINGUX \
 	  -DFRAMESKIP \
 	  -D_REENTRANT \
 	  -I$(INCLUDEDIR)/SDL -D_GNU_SOURCE=1 -D_REENTRANT
+	  
+
+LDFLAGS  = -nodefaultlibs -lc -lstdc++ -lgcc -lm -lSDL -lasound -lz -lm -no-pie -Wl,--as-needed -Wl,--gc-sections -flto -s
+	  
+ifeq ($(PROFILE), YES)
+CFLAGS 		+= -fprofile-generate="/media/QEMU VVFAT"
+LDFLAGS  	+= -lgcov
+else ifeq ($(PROFILE), APPLY)
+CFLAGS		+= -fprofile-use -fbranch-probabilities
+endif
+	  
 CXXFLAGS += $(CFLAGS) -fno-rtti -fno-math-errno -fno-threadsafe-statics
 
-LDFLAGS  = -lc -lstdc++ -lgcc -lm -lSDL -lasound -lz -lm -no-pie -Wl,--as-needed -Wl,--gc-sections -flto -s
 
 TARGET = fceux
 
