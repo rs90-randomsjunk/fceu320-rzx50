@@ -85,7 +85,7 @@ unsigned int lagCounter;
 bool lagCounterDisplay;
 char lagFlag;
 extern bool frameAdvanceLagSkip;
-extern bool movieSubtitles;
+extern int movieSubtitles;
 //-------------
 
 static uint8 joy_readbit[2];

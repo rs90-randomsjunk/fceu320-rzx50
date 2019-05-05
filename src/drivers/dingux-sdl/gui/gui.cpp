@@ -409,7 +409,7 @@ void FCEUGUI_Run() {
 			DrawText(gui_screen, g_romname, 40, 37);
 
 			// Draw menu
-			for (i = 0, y = 72 - 12; i < 8; i++, y += 16) {
+			for (i = 0, y = 72 - 12; i < 7; i++, y += 16) {
 				DrawText(gui_screen, main_menu[i].name, 60, y);
 			}
 

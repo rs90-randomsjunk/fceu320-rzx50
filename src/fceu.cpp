@@ -110,7 +110,7 @@ int AFon = 1, AFoff = 1, AutoFireOffset = 0; //For keeping track of autofire set
 bool justLagged = false;
 bool frameAdvanceLagSkip = false; //If this is true, frame advance will skip over lag frame (i.e. it will emulate 2 frames instead of 1)
 bool AutoSS = false;        //Flagged true when the first auto-savestate is made while a game is loaded, flagged false on game close
-bool movieSubtitles = true; //Toggle for displaying movie subtitles
+int movieSubtitles = true; //Toggle for displaying movie subtitles
 bool DebuggerWasUpdated = false; //To prevent the debugger from updating things without being updated.
 bool AutoResumePlay = false;
 char romNameWhenClosingEmulator[2048] = {0};

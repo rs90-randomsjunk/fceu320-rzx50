@@ -22,15 +22,7 @@
 #include        <stdlib.h>
 
 #include        "share.h"
-
-typedef struct {
-        uint32 mzx,mzy,mzb;
-        int zap_readbit;
-        int bogo;
-        int zappo;
-        uint64 zaphit;
-} ZAPPER;
-
+#include        "zapper.h"
 static ZAPPER ZD;
 
 static void ZapperFrapper(uint8 *bg, uint8 *spr, uint32  linets, int final)
