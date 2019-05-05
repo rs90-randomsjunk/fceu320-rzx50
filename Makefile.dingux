@@ -229,7 +229,7 @@ CFLAGS += -DDINGUX \
 	  -DFRAMESKIP \
 	  -D_REENTRANT \
 	  -I$(INCLUDEDIR)/SDL -D_GNU_SOURCE=1 -D_REENTRANT
-CXXFLAGS += $(CFLAGS)
+CXXFLAGS += $(CFLAGS) -fno-rtti -fno-math-errno -fno-threadsafe-statics
 
 LDFLAGS  = -lc -lstdc++ -lgcc -lm -lSDL -lasound -lz -lm -no-pie -Wl,--as-needed -Wl,--gc-sections -flto -s
 

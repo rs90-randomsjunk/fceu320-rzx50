@@ -229,7 +229,7 @@ CFLAGS += -DDINGUX \
 	  -DFRAMESKIP \
 	  -D_REENTRANT \
 	  -D_GNU_SOURCE=1 -D_REENTRANT
-CXXFLAGS += $(CFLAGS)
+CXXFLAGS += $(CFLAGS)  -fno-rtti -fno-math-errno -fno-threadsafe-statics
 LDFLAGS  = $(CC_OPTS) -lSDL -lasound -lz -lm
 
 TARGET = fceux
