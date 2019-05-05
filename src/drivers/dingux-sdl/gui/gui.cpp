@@ -236,12 +236,12 @@ static int flip_disc() {
 static int save_state() {
 	FCEUI_SaveState(NULL);
 	save_preview();
-	return 0;
+	return 1;
 }
 
 static int load_state() {
 	FCEUI_LoadState(NULL);
-	return 0;
+	return 1;
 }
 
 static int save_screenshot() {
