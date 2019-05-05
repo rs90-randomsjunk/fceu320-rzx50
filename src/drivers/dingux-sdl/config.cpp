@@ -26,8 +26,6 @@
 #include <windows.h>
 #endif
 
-static char home_path[256];
-
 /**
  * Read a custom pallete from a file and load it into the core.
  */
@@ -53,15 +51,25 @@ int LoadCPalette(const std::string &file) {
  * Creates the subdirectories used for saving snapshots, movies, game
  * saves, etc.  Hopefully obsolete with new configuration system.
  */
-static void CreateDirs() {
-	char *subs[7] = { "fcs", "snaps", "gameinfo", "sav", "cheats", "movie", "cfg" };
-	uint32_t x;
-	char tmp[512];
-	for(x = 0; x < 7; x++) 
-	{
-		snprintf(tmp, sizeof(tmp), "%s/%s", home_path, subs[x]);
-		mkdir(tmp, S_IRWXU);
+static void CreateDirs(const std::string &dir) {
+	char *subs[7] = { "fcs", "snaps", "gameinfo", "sav", "cheats", "movie",
+			"cfg" };
+	std::string subdir;
+	int x;
+
+#if defined(WIN32) || defined(NEED_MINGW_HACKS)
+	mkdir(dir.c_str());
+	for(x = 0; x < 7; x++) {
+		subdir = dir + PSS + subs[x];
+		mkdir(subdir.c_str());
 	}
+#else
+	mkdir(dir.c_str(), S_IRWXU);
+	for (x = 0; x < 7; x++) {
+		subdir = dir + PSS + subs[x];
+		mkdir(subdir.c_str(), S_IRWXU);
+	}
+#endif
 }
 
 /**
@@ -69,21 +77,42 @@ static void CreateDirs() {
  * hopefully become obsolete once the new configuration system is in
  * place.
  */
-static void GetBaseDirectory()
+static void GetBaseDirectory(std::string &dir)
 {
-	snprintf(home_path, sizeof(home_path), "%s/.fceux", getenv("HOME"));
+#ifdef WIN32
+	dir = ".fceux";
+	mkdir(dir.c_str());
+#else
+	char *home = getenv("HOME");
+	if (home) {
+		dir = std::string(home) + "/.fceux";
+	} else {
+#ifdef WIN32
+		home = new char[MAX_PATH + 1];
+		GetModuleFileName(NULL, home, MAX_PATH + 1);
+
+		char *lastBS = strrchr(home,'\\');
+		if(lastBS) {
+			*lastBS = 0;
+		}
+
+		dir = std::string(home);
+		delete[] home;
+#else
+		dir = "";
+#endif
+	}
+#endif
 }
 
 Config * InitConfig() {
-	std::string prefix, dir;
+	std::string dir, prefix;
 	Config *config;
 
-	GetBaseDirectory();
+	GetBaseDirectory(dir);
 
-	FCEUI_SetBaseDirectory(home_path);
-	CreateDirs();
-	
-	dir.assign(home_path, sizeof(home_path));
+	FCEUI_SetBaseDirectory(dir.c_str());
+	CreateDirs(dir);
 
 	config = new Config(dir);
 
