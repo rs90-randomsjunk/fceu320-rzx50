@@ -3,8 +3,8 @@ SRC = src/
 
 CORE_OBJS = \
 	$(SRC)cart.o $(SRC)cheat.o $(SRC)config.o $(SRC)movie.o $(SRC)oldmovie.o \
-	$(SRC)drawing.o $(SRC)fceu.o $(SRC)fds.o $(SRC)file.o $(SRC)conddebug.o \
-	$(SRC)filter.o $(SRC)ines.o $(SRC)input.o $(SRC)debug.o $(SRC)wave.o \
+	$(SRC)drawing.o $(SRC)fceu.o $(SRC)fds.o $(SRC)file.o \
+	$(SRC)filter.o $(SRC)ines.o $(SRC)input.o $(SRC)wave.o \
 	$(SRC)nsf.o $(SRC)palette.o $(SRC)ppu.o $(SRC)sound.o $(SRC)state.o $(SRC)unif.o \
  	$(SRC)video.o $(SRC)vsuni.o $(SRC)x6502.o $(SRC)netplay.o $(SRC)emufile.o
     
@@ -219,7 +219,7 @@ LIBDIR=
 W_OPTS	= -Wall -Wno-write-strings -Wno-narrowing -Wno-unused-local-typedefs
 
 F_OPTS =
-CC_OPTS	= -O2 -g $(F_OPTS) $(W_OPTS)
+CC_OPTS	= -O2 -pg $(F_OPTS) $(W_OPTS)
 
 CFLAGS += $(CC_OPTS)
 CFLAGS += -DDINGUX \
