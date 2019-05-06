@@ -26,7 +26,6 @@
 #include "filter.h"
 #include "state.h"
 #include "wave.h"
-#include "debug.h"
 
 #include <cstdlib>
 #include <cstdio>
@@ -170,24 +169,6 @@ static void PrepDPCM()
  if(debug_loggingCD)LogDPCM(0x8000+DMCAddress, DMCSize);
  #endif
 
-}
-
-void LogDPCM(int romaddress, int dpcmsize){
-	int i = GetPRGAddress(romaddress);
-
-	if(i == -1)return;
-
-	for (int dpcmstart = i; dpcmstart < (i + dpcmsize); dpcmstart++) {
-		if(!(cdloggerdata[dpcmstart] & 0x40)) {
-			cdloggerdata[dpcmstart] |= 0x40;
-
-			if(!(cdloggerdata[dpcmstart] & 2)){
-				datacount++;
-				cdloggerdata[dpcmstart] |= 2;
-				if(!(cdloggerdata[dpcmstart] & 1))undefinedcount--;
-			}
-		}
-	}
 }
 
 /* Instantaneous?  Maybe the new freq value is being calculated all of the time... */

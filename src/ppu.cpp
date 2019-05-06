@@ -35,7 +35,6 @@
 #include "video.h"
 #include "input.h"
 #include "driver.h"
-#include "debug.h"
 		 
 #include <cstring>
 #include <cstdio>
@@ -437,24 +436,6 @@ int GetCHRAddress(int A) {
 	return -1;
 }
 
-#define RENDER_LOG(tmp) { \
-		if (debug_loggingCD) \
-		{ \
-			int addr = GetCHRAddress(tmp); \
-			if (addr != -1)	\
-			{ \
-				if (!(cdloggervdata[addr] & 1))	\
-				{ \
-					cdloggervdata[addr] |= 1; \
-					if(cdloggerVideoDataSize) { \
-						if (!(cdloggervdata[addr] & 2)) undefinedvromcount--; \
-						rendercount++; \
-					} \
-				} \
-			} \
-		} \
-}
-
 uint8 FASTCALL FFCEUX_PPURead_Default(uint32 A) {
 	uint32 tmp = A;
 
@@ -664,18 +645,7 @@ static DECLFR(A200x) {	/* Not correct for $2004 reads. */
 static DECLFR(A2007) {
 	uint8 ret;
 	uint32 tmp = RefreshAddr & 0x3FFF;
-
-	if (debug_loggingCD) {
-		if (!DummyRead && (LogAddress != -1)) {
-			if (!(cdloggervdata[LogAddress] & 2)) {
-				cdloggervdata[LogAddress] |= 2;
-				if ((!(cdloggervdata[LogAddress] & 1)) && cdloggerVideoDataSize) undefinedvromcount--;
-				vromreadcount++;
-			}
-		} else
-			DummyRead = 0;
-	}
-
+	
 	if (newppu) {
 		ret = VRAMBuffer;
 		RefreshAddr = ppur.get_2007access() & 0x3FFF;
@@ -694,8 +664,6 @@ static DECLFR(A2007) {
 				ret = READPAL(tmp & 0x1F);
 			VRAMBuffer = CALL_PPUREAD(RefreshAddr - 0x1000);
 		} else {
-			if (debug_loggingCD && (RefreshAddr < 0x2000))
-				LogAddress = GetCHRAddress(RefreshAddr);
 			VRAMBuffer = CALL_PPUREAD(RefreshAddr);
 		}
 		ppur.increment2007(ppur.status.sl >= 0 && ppur.status.sl < 241 && PPUON, INC32 != 0);
@@ -731,8 +699,6 @@ static DECLFR(A2007) {
 				if (PPU_hook) PPU_hook(tmp);
 				PPUGenLatch = VRAMBuffer;
 				if (tmp < 0x2000) {
-					if (debug_loggingCD)
-						LogAddress = GetCHRAddress(tmp);
 					VRAMBuffer = VPage[tmp >> 10][tmp];
 				} else if (tmp < 0x3F00)
 					VRAMBuffer = vnapage[(tmp >> 10) & 0x3][tmp & 0x3FF];
@@ -882,11 +848,6 @@ static DECLFW(B2006) {
 
 static DECLFW(B2007) {
 	uint32 tmp = RefreshAddr & 0x3FFF;
-
-	if (debug_loggingCD) {
-		if(tmp < 0x2000)
-			cdloggervdata[tmp] = 0;
-	}
 
 	if (newppu) {
 		PPUGenLatch = V;
@@ -1384,11 +1345,7 @@ static void FetchSpriteData(void) {
 					else
 						C = VRAMADR(vadr);
 
-					if (SpriteON)
-						RENDER_LOG(vadr);
 					dst.ca[0] = C[0];
-					if (SpriteON)
-						RENDER_LOG(vadr + 8);
 					dst.ca[1] = C[8];
 					dst.x = spr->x;
 					dst.atr = spr->atr;
@@ -1436,15 +1393,11 @@ static void FetchSpriteData(void) {
 						C = MMC5SPRVRAMADR(vadr);
 					else
 						C = VRAMADR(vadr);
-					if (SpriteON)
-						RENDER_LOG(vadr);
 					dst.ca[0] = C[0];
 					if (ns < 8) {
 						PPU_hook(0x2000);
 						PPU_hook(vadr);
 					}
-					if (SpriteON)
-						RENDER_LOG(vadr + 8);
 					dst.ca[1] = C[8];
 					dst.x = spr->x;
 					dst.atr = spr->atr;
@@ -1989,20 +1942,14 @@ struct BGData {
 			ppur.par = nt;
 			RefreshAddr = ppur.get_ptread();
 			if (PEC586Hack) {
-				if (ScreenON)
-					RENDER_LOG(RefreshAddr | pecnt);
 				pt[0] = CALL_PPUREAD(RefreshAddr | pecnt);
 				runppu(kFetchTime);
 				pt[1] = CALL_PPUREAD(RefreshAddr | pecnt);
 				runppu(kFetchTime);
 			} else {
-				if (ScreenON)
-					RENDER_LOG(RefreshAddr);
 				pt[0] = CALL_PPUREAD(RefreshAddr);
 				runppu(kFetchTime);
 				RefreshAddr |= 8;
-				if (ScreenON)
-					RENDER_LOG(RefreshAddr);
 				pt[1] = CALL_PPUREAD(RefreshAddr);
 				runppu(kFetchTime);
 			}
@@ -2343,14 +2290,10 @@ int FCEUX_PPU_Loop(int skip) {
 
 				//pattern table fetches
 				RefreshAddr = patternAddress;
-				if (SpriteON)
-					RENDER_LOG(RefreshAddr);
 				oam[4] = CALL_PPUREAD(RefreshAddr);
 				if (realSprite) runppu(kFetchTime);
 
 				RefreshAddr += 8;
-				if (SpriteON)
-					RENDER_LOG(RefreshAddr);
 				oam[5] = CALL_PPUREAD(RefreshAddr);
 				if (realSprite) runppu(kFetchTime);
 

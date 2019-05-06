@@ -88,22 +88,14 @@ pshift[1] <<= 8;
 
 #ifdef PPU_BGFETCH
 	if (RefreshAddr & 1) {
-		if(ScreenON)
-			RENDER_LOG(vadr + 8);
 		pshift[0] |= C[8];
 		pshift[1] |= C[8];
 	} else {
-		if(ScreenON)
-			RENDER_LOG(vadr);
 		pshift[0] |= C[0];
 		pshift[1] |= C[0];
 	}
 #else
-	if(ScreenON)
-		RENDER_LOG(vadr);
 	pshift[0] |= C[0];
-	if(ScreenON)
-		RENDER_LOG(vadr + 8);
 	pshift[1] |= C[8];
 #endif
 
