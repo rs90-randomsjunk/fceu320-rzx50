@@ -486,6 +486,15 @@ FCEUGI *FCEUI_LoadGameVirtual(const char *name, int OverwriteVidMode, bool silen
 	delete GameInfo;
 	GameInfo = 0;
 
+	if (PAL)
+	{
+		setenv("SDL_VIDEO_REFRESHRATE", "50", 0);
+	}
+	else
+	{
+		setenv("SDL_VIDEO_REFRESHRATE", "60", 0);
+	}
+
 	return 0;
 
  endlseq:
@@ -896,6 +905,15 @@ void FCEU_ResetVidSys(void) {
 	if (newppu)
 		overclock_enabled = 0;
 
+	if (PAL)
+	{
+		setenv("SDL_VIDEO_REFRESHRATE", "50", 0);
+	}
+	else
+	{
+		setenv("SDL_VIDEO_REFRESHRATE", "60", 0);
+	}
+
 	normalscanlines = (dendy ? 290 : 240)+newppu; // use flag as number!
 	totalscanlines = normalscanlines + (overclock_enabled ? postrenderscanlines : 0);
 	FCEUPPU_SetVideoSystem(w || dendy);
@@ -951,6 +969,16 @@ void FCEUI_SetRenderedLines(int ntscf, int ntscl, int palf, int pall) {
 
 void FCEUI_SetVidSystem(int a) {
 	FSettings.PAL = a ? 1 : 0;
+	
+	if (FSettings.PAL)
+	{
+		setenv("SDL_VIDEO_REFRESHRATE", "50", 0);
+	}
+	else
+	{
+		setenv("SDL_VIDEO_REFRESHRATE", "60", 0);
+	}
+	
 	if (GameInfo) {
 		FCEU_ResetVidSys();
 		FCEU_ResetPalette();
@@ -997,6 +1025,16 @@ void FCEUI_SetRegion(int region) {
 #endif
 			break;
 	}
+	
+	if (region > 0)
+	{
+		setenv("SDL_VIDEO_REFRESHRATE", "50", 0);
+	}
+	else
+	{
+		setenv("SDL_VIDEO_REFRESHRATE", "60", 0);
+	}
+	
 	normalscanlines += newppu;
 	totalscanlines = normalscanlines + (overclock_enabled ? postrenderscanlines : 0);
 	FCEUI_SetVidSystem(pal_emulation);

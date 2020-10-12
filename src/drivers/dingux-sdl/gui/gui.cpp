@@ -275,7 +275,6 @@ extern char FileBase[2048];
 
 int FCEUGUI_Init(FCEUGI *gi) 
 {
-
 	// create 565 RGB surface
 	gui_screen = SDL_CreateRGBSurface(SDL_SWSURFACE, 320, 240, 16, 0xf800, 0x7e0, 0x1f, 0);
 	if(!gui_screen) printf("Error creating surface gui\n");
@@ -318,16 +317,22 @@ void FCEUGUI_Kill() {
 	KillFont();
 }
 
+uint8_t menu = 0;
+
 void FCEUGUI_Run() {
+	extern uint8_t forceRefresh;
 	static int index = 0;
 	static int spy = 72;
 	int done = 0, y, i;
+	
+	screen = SDL_SetVideoMode(240, 160, 16, SDL_HWSURFACE | SDL_TRIPLEBUF);
 
 	load_preview();
-
+	
+	menu = 1;
 	g_dirty = 1;
 	while (!done) {
-
+		
 		// Parse input
 		readkey();
 		if (parsekey(DINGOO_B))
@@ -437,11 +442,11 @@ void FCEUGUI_Run() {
 		}
 
 		SDL_Delay(16);
-
+		
 		// Update real screen
 		FCEUGUI_Flip();
 	}
-
+	
 	g_psdl = FCEUD_GetPaletteArray16();
 
 	// Clear screen
@@ -449,4 +454,8 @@ void FCEUGUI_Run() {
 
 	g_key = 0;
 	counter = 0;
+	
+	forceRefresh = 1;
+	menu = 0;
+	//screen = SDL_SetVideoMode(256, 240, 24, SDL_HWSURFACE | SDL_TRIPLEBUF | SDL_YUV444);
 }

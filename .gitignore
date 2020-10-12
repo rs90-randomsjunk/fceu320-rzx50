@@ -3,3 +3,6 @@
 *.bat
 *.opk
 bin/*
+*.gcda
+*.elf
+*.opk

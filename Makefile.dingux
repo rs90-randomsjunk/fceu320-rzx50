@@ -213,7 +213,7 @@ PROFILE = APPLY
 INCLUDEDIR=$(TOOLCHAIN)/include
 
 OPT_FLAGS = -Ofast -fdata-sections -ffunction-sections -mno-fp-exceptions -mno-check-zero-division -mframe-header-opt -fno-common -flto -fsingle-precision-constant -march=mips32 -mtune=mips32
-OPT_FLAGS		+= -falign-functions=1 -falign-jumps=1 -falign-loops=1 -falign-labels=1
+OPT_FLAGS	+= -falign-functions=1 -falign-jumps=1 -falign-loops=1 -falign-labels=1 -mplt -mno-shared
 
 CFLAGS = -I$(INCLUDEDIR) -I$(SRC) $(OPT_FLAGS)
 CXXFLAGS = -I$(INCLUDEDIR)

@@ -40,8 +40,10 @@
 #include "../common/configSys.h"
 
 // GLOBALS
-SDL_Surface *screen, *toscale_surface;
-SDL_Surface *nes_screen; // 256x224
+SDL_Surface *screen;
+//SDL_Surface *nes_screen; // 256x224
+
+uint8_t drm_palette[3][256];
 
 extern Config *g_config;
 
@@ -86,6 +88,26 @@ static struct Color s_cpsdl[256];
 #  define DINGOO_MULTIBUF SDL_DOUBLEBUF
 #endif
 
+
+#define UINT16_16(val) ((uint32_t)(val * (float)(1<<16)))
+static const uint32_t YUV_MAT[3][3] = {
+	{UINT16_16(0.2999f),   UINT16_16(0.587f),    UINT16_16(0.114f)},
+	{UINT16_16(0.168736f), UINT16_16(0.331264f), UINT16_16(0.5f)},
+	{UINT16_16(0.5f),      UINT16_16(0.418688f), UINT16_16(0.081312f)}
+};
+
+
+static void Update_Hardware_Palette(void)
+{
+	int i;
+	for (i = 0; i < 256; i++)
+	{
+		drm_palette[0][i] = ( ( UINT16_16(  0) + YUV_MAT[0][0] * s_cpsdl[i].r + YUV_MAT[0][1] * s_cpsdl[i].g + YUV_MAT[0][2] * s_cpsdl[i].b) >> 16 );
+		drm_palette[1][i] = ( ( UINT16_16(128) - YUV_MAT[1][0] * s_cpsdl[i].r - YUV_MAT[1][1] * s_cpsdl[i].g + YUV_MAT[1][2] * s_cpsdl[i].b) >> 16 );
+		drm_palette[2][i] = ( ( UINT16_16(128) + YUV_MAT[2][0] * s_cpsdl[i].r - YUV_MAT[2][1] * s_cpsdl[i].g - YUV_MAT[2][2] * s_cpsdl[i].b) >> 16 );
+	}
+}
+
 /**
  * Attempts to destroy the graphical video display.  Returns 0 on
  * success, -1 on failure.
@@ -101,7 +123,7 @@ int KillVideo() {
 	if (s_inited == 0)
 		return -1;
 
-	if (nes_screen) SDL_FreeSurface(nes_screen);
+	//if (nes_screen) SDL_FreeSurface(nes_screen);
 	
 	s_inited = 0;
 	return 0;
@@ -109,7 +131,6 @@ int KillVideo() {
 
 void Destroy_Fceux_Video()
 {
-	if (toscale_surface) SDL_FreeSurface(toscale_surface);
 	if (screen) SDL_FreeSurface(screen);
 }
 
@@ -130,6 +151,9 @@ void FCEUD_VideoChanged() {
 	else
 		PAL = 0;
 }
+
+extern uint8_t menu;
+
 /**
  * Attempts to initialize the graphical video display.  Returns 0 on
  * success, -1 on failure.
@@ -162,19 +186,28 @@ int InitVideo(FCEUGI *gi) {
 			fprintf(stderr,"%s",SDL_GetError());
 		}
 
-	screen = SDL_SetVideoMode(240, 160, 16, SDL_HWSURFACE);
-	toscale_surface = SDL_CreateRGBSurface(SDL_SWSURFACE, 256, 240, 16, 0,0,0,0);
+	if (menu)
+	{
+		if (screen->w != 240)
+		{
+			screen = SDL_SetVideoMode(240, 160, 16, SDL_HWSURFACE | SDL_TRIPLEBUF);
+		}
+	}
+	else
+	{
+		screen = SDL_SetVideoMode(256, 224 + (PAL*16), 24, SDL_HWSURFACE | SDL_TRIPLEBUF | SDL_YUV444);
+	}
 	
 	s_VideoModeSet = true;
-	
-	// a hack to bind inner buffer to nes_screen surface
-	extern uint8 *XBuf;
 
-	nes_screen = SDL_CreateRGBSurfaceFrom(XBuf, 256, 240, 8, 256, 0, 0, 0, 0);
+	/*nes_screen = SDL_CreateRGBSurfaceFrom(XBuf, 256, 240, 8, 256, 0, 0, 0, 0);
 	if(!nes_screen)
-		printf("Error in SDL_CreateRGBSurfaceFrom\n");
-	SDL_SetPalette(nes_screen, SDL_LOGPAL, (SDL_Color *)s_cpsdl, 0, 256);
-
+		printf("Error in SDL_CreateRGBSurfaceFrom\n");*/
+#ifndef YUV_SCALING
+	SDL_SetPalette(screen, SDL_LOGPAL|SDL_PHYSPAL, (SDL_Color *)s_cpsdl, 0, 256);
+#else
+	Update_Hardware_Palette();
+#endif
 	SDL_ShowCursor(0);
 
 	/* clear screen */
@@ -236,9 +269,14 @@ void FCEUD_SetPalette(uint8 index, uint8 r, uint8 g, uint8 b)
 	s_cpsdl[index].r = r;
 	s_cpsdl[index].g = g;
 	s_cpsdl[index].b = b;
+	
+	drm_palette[0][index] = ( ( UINT16_16(  0) + YUV_MAT[0][0] * s_cpsdl[index].r + YUV_MAT[0][1] * s_cpsdl[index].g + YUV_MAT[0][2] * s_cpsdl[index].b) >> 16 );
+	drm_palette[1][index] = ( ( UINT16_16(128) - YUV_MAT[1][0] * s_cpsdl[index].r - YUV_MAT[1][1] * s_cpsdl[index].g + YUV_MAT[1][2] * s_cpsdl[index].b) >> 16 );
+	drm_palette[2][index] = ( ( UINT16_16(128) + YUV_MAT[2][0] * s_cpsdl[index].r - YUV_MAT[2][1] * s_cpsdl[index].g - YUV_MAT[2][2] * s_cpsdl[index].b) >> 16 );
 
 	//uint32 col = (r << 16) | (g << 8) | b;
 	//s_psdl[index] = (uint16)COL32_TO_16(col);
+	
 	s_psdl[index] = dingoo_video_color15(r, g, b);
 
 	if (index == 255)
@@ -278,16 +316,19 @@ void UnlockConsole() {
 
 #define READU16(x)  (uint16) ((uint16)(x)[0] | (uint16)(x)[1] << 8) 
 
-uint32_t toclip_ppu = 0;
-uint32_t toclip_ppu_y = 0;
 extern uint8_t PPU[4];
+
+uint8_t clip_ppu = 0;
+uint8_t forceRefresh = 0;
+uint16_t height;
+uint16_t width;
 
 /**
  * Pushes the given buffer of bits to the screen.
  */
 void BlitScreen(uint8 *XBuf) {
-	int x, x2, y, y2;
-
+	int x, x2, y, y2, i;
+	
 	// Taken from fceugc
 	// FDS switch disk requested - need to eject, select, and insert
 	// but not all at once!
@@ -316,54 +357,61 @@ void BlitScreen(uint8 *XBuf) {
 		FDSTimer++;
 	}
 	
-	register uint8 *pBuf = XBuf;
+	extern uint8 *XBuf;
 	int32 pinc = 0;
-	register uint32 *dest = (uint32 *) toscale_surface->pixels;
+	if (!(PPU[1] & 2)) clip_ppu = 8;
+	else clip_ppu = 0;
 	
-	/* Clip Left Column if PPU background setting is enabled */
-	toclip_ppu = 0;
-	toclip_ppu_y = 0;
+	height = 224 + (PAL*16);
+	width = 256 - clip_ppu;
 	
-	if (!(PPU[1] & 2)) toclip_ppu = 1;
-
+	if (screen->w != width || screen->h != height || forceRefresh)
+	{
+		if (screen) SDL_FreeSurface(screen);
+		screen = SDL_SetVideoMode(width, height, 24, SDL_HWSURFACE | SDL_TRIPLEBUF | SDL_YUV444);
+		forceRefresh = 0;
+		for(i=0;i<3;i++)
+		{
+			SDL_FillRect(screen, NULL, 0);
+			SDL_Flip(screen);
+		}
+	}
+	
 	// TODO - Move these to its own file?
 	if (SDL_LockSurface(screen) == 0)
 	{
-		for (y = s_tlines; y; y--) 
+		uint16_t i;
+		uint_fast8_t j, a, plane;
+		uint8_t* dst_yuv[3];
+		uint32_t srcwidth = 256;
+		uint8_t *srcbase = XBuf + clip_ppu;
+		dst_yuv[0] = (uint8_t*)screen->pixels;
+		dst_yuv[1] = dst_yuv[0] + height * screen->pitch;
+		dst_yuv[2] = dst_yuv[1] + height * screen->pitch;
+		for (plane=0; plane<3; plane++) /* The three Y, U and V planes */
 		{
-			for (x = 256 >> 3; x; x--) 
+			uint32_t y;
+			register uint8_t *pal = drm_palette[plane];
+			for (y=0; y < height; y++)   /* The number of lines to copy */
 			{
-				__builtin_prefetch(dest + 4, 1);
-				*dest++ = palettetranslate[*(uint16 *) pBuf];
-				*dest++ = palettetranslate[*(uint16 *) (pBuf + 2)];
-				*dest++ = palettetranslate[*(uint16 *) (pBuf + 4)];
-				*dest++ = palettetranslate[*(uint16 *) (pBuf + 6)];
-				pBuf += 8;
+				register uint8_t *src = srcbase + (y*srcwidth);
+				register uint8_t *end = src + width;
+				register uint32_t *dst = (uint32_t *)&dst_yuv[plane][width * y];
+
+				 __builtin_prefetch(pal, 0, 1 );
+				 __builtin_prefetch(src, 0, 1 );
+				 __builtin_prefetch(dst, 1, 0 );
+
+				while (src < end)       /* The actual line data to copy */
+				{
+					register uint32_t pix;
+					pix  = pal[*src++];
+					pix |= (pal[*src++])<<8;
+					pix |= (pal[*src++])<<16;
+					pix |= (pal[*src++])<<24;
+					*dst++ = pix;
+				}
 			}
-			dest += pinc;
-		}
-		switch(s_fullscreen)
-		{
-			// No crop (except Left Column)
-			case 0:
-				bitmap_scale(toclip_ppu ? 8 : 0, 0, toclip_ppu ? 248 : 256, 224, screen->w, screen->h, 256, 0, (uint16_t* __restrict__)toscale_surface->pixels, (uint16_t* __restrict__)screen->pixels);
-			break;
-			// Nintendo Safe overscan
-			case 1:
-				bitmap_scale(16, 16, 224, 192, screen->w, screen->h, 256, 0, (uint16_t* __restrict__)toscale_surface->pixels, (uint16_t* __restrict__)screen->pixels);
-			break;
-			// PocketNES
-			case 2:
-				bitmap_scale(8, 16, 240, 197, screen->w, screen->h, 256, 0, (uint16_t* __restrict__)toscale_surface->pixels, (uint16_t* __restrict__)screen->pixels);
-			break;
-			// 240x16 crop
-			case 3:
-				bitmap_scale(8, 48, 240, 160, screen->w, screen->h, 256, 0, (uint16_t* __restrict__)toscale_surface->pixels, (uint16_t* __restrict__)screen->pixels);
-			break;
-			// Zelda ingame
-			case 4:
-				bitmap_scale(8, 64, 240, 160, screen->w, screen->h, 256, 0, (uint16_t* __restrict__)toscale_surface->pixels, (uint16_t* __restrict__)screen->pixels);
-			break;
 		}
 		SDL_UnlockSurface(screen);
 	}
@@ -399,12 +447,12 @@ void FCEUI_SetAviDisableMovieMessages(bool disable) {
 
 //clear all screens (for multiple-buffering)
 void dingoo_clear_video(void) {
-	SDL_FillRect(screen,NULL,SDL_MapRGBA(screen->format, 0, 0, 0, 255));
+	SDL_FillRect(screen,NULL,SDL_MapRGB(screen->format, 0, 0, 0));
 	SDL_Flip(screen);
-	SDL_FillRect(screen,NULL,SDL_MapRGBA(screen->format, 0, 0, 0, 255));
+	SDL_FillRect(screen,NULL,SDL_MapRGB(screen->format, 0, 0, 0));
 	SDL_Flip(screen);
 #ifdef SDL_TRIPLEBUF
-	SDL_FillRect(screen,NULL,SDL_MapRGBA(screen->format, 0, 0, 0, 255));
+	SDL_FillRect(screen,NULL,SDL_MapRGB(screen->format, 0, 0, 0));
 	SDL_Flip(screen);
 #endif
 }
